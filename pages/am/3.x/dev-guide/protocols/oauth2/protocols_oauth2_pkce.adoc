@@ -1,0 +1,5 @@
+= PKCE
+:page-sidebar: am_3_x_sidebar
+:page-permalink: am/current/am_devguide_protocols_oauth2_pkce.html
+:page-folder: am/dev-guide/protocols/oauth2
+:page-layout: am

@@ -38,85 +38,103 @@ OAuth 2.0 defines four roles:
       The server issuing access tokens to the client after successfully
       authenticating the resource owner and obtaining authorization.
 
-== Protocol flow
-
-The OAuth 2.0 flow describes the interaction between the four roles and includes the following steps:
-
-* The client requests authorization from the resource owner.  The
-        authorization request can be made directly to the resource owner
-        (as shown), or preferably indirectly via the authorization
-        server as an intermediary.
-
-* The client receives an authorization grant, which is a
-        credential representing the resource owner's authorization,
-        expressed using one of four grant types defined in this
-        specification or using an extension grant type.  The
-        authorization grant type depends on the method used by the
-        client to request authorization and the types supported by the
-        authorization server.
-
-* The client requests an access token by authenticating with the
-        authorization server and presenting the authorization grant.
-
-* The authorization server authenticates the client and validates
-        the authorization grant, and if valid, issues an access token.
-
-* The client requests the protected resource from the resource
-        server and authenticates by presenting the access token.
-
-* The resource server validates the access token, and if valid,
-        serves the request.
-
-NOTE: The preferred method for the client to obtain an authorization grant from the resource owner is to use the authorization server as an intermediary (i.e Authorization Code Flow).
-https://am-gateway/{domain}/oauth/authorize?response_type=code&client_id=my-client&redirect_uri=https://my-app/callback&state=KHGF4567
-
-== Authorization grant
+== Grant types
 
 An authorization grant is a flow used by the client to obtain an access token.
-The specification defines four grant types -- authorization code, implicit, resource owner password credentials and client credentials -- as well as an extensibility mechanism for defining additional types.
-The use of one of these grant types will mainly depend of your application type.
+
+The specification defines four grant types :
+
+- link:/am/current/am_devguide_protocols_oauth2_overview.html#authorization_code[Authorization code]
+- link:/am/current/am_devguide_protocols_oauth2_overview.html#implicit[Implicit]
+- link:/am/current/am_devguide_protocols_oauth2_overview.html#resource_owner_password_credentials[Resource owner password credentials]
+- link:/am/current/am_devguide_protocols_oauth2_overview.html#client_credentials[Client credentials]
+
+NOTE: OAuth 2.0 also supports the use of link:/am/current/am_devguide_protocols_oauth2_overview.html#refresh_token[refresh tokens] to obtain new access tokens.
+
+NOTE: AM provides an extensibility mechanism for defining additional types. See link:/am/current/am_userguide_extension_grants.html[Extension grants] section.
+
+NOTE: The use of one of these grant types will mainly depend of your application type.
 
 === Authorization Code
 
-The authorization code is obtained by using an authorization server as an intermediary between the client and resource owner.
+The authorization code is used by applications to obtain a temporary code after requesting the authorization of the End-User.
 
-NOTE: Flow used in web (server side) and mobile apps. For native application (mobile app), you should also use the link:https://tools.ietf.org/html/rfc7636[PKCE extension], which provides protections against other attacks where the authorization code may be intercepted.
+1. The End-User clicks *Sign in* within its application.
+2. The End-User is redirected to the AM Authorization Server */oauth/authorize?response_type=code*.
+3. The End-User authenticates using one of the configured identity providers and login options (MFA for example).
+4. Optional. A consent page can be displayed to ask for user approvals.
+5. AM redirects the End-User back to the application with an authorization code.
+6. The application call the AM Authorization Server */oauth/token* to exchange the code for an access token (and optionally, a refresh token)
+7. The application can use this access token to make secured API calls about the End-User.
+
+NOTE: The authorization code is one use only.
+
+NOTE: Flow used for web apps (server side). For native (mobile) and Javascript apps, you should also use the link:https://tools.ietf.org/html/rfc7636[PKCE extension], which provides protections against other attacks where the authorization code may be intercepted.
 
 NOTE: Authorization Code grant URL : GET https://am-gateway/{domain}/oauth/authorize?response_type=code&client_id=web-app&redirect_uri=https://web-app/callback
 
+NOTE: For more information about this flow, please read the link:https://tools.ietf.org/html/rfc6749#section-1.3.1[RFC].
+
 === Implicit
 
-The implicit grant is a simplified authorization code flow.
+WARNING: OAuth standard now discourages the use of Implicit grant to request access tokens from Javascript applications.
+You should considered using the link:/am/current/am_devguide_protocols_oauth2_overview.html#authorization_code[Authorization code] grant with PKCE extension for all your applications.
 
-NOTE: Flow optimized for clients implemented in a browser using a scripting language such as JavaScript
+The implicit grant is a simplified authorization code flow. Instead of getting a temporary code first, you can retrieve an access token directly from the web browser redirection.
+
+1. The End-User clicks *Sign in* within its application.
+2. The End-User is redirected to the AM Authorization Server */oauth/authorize?response_type=token*.
+3. The End-User authenticates using one of the configured identity providers and login options (MFA for example).
+4. Optional. A consent page can be displayed to ask for user approvals.
+5. AM redirects the End-User back to the application with an access token.
+6. The application can use this access token to make secured API calls about the End-User.
 
 NOTE: Implicit grant URL : GET https://am-gateway/{domain}/oauth/authorize?response_type=token&client_id=web-app&redirect_uri=https://web-app/callback
 
+NOTE: For more information about this flow, please read the link:https://tools.ietf.org/html/rfc6749#section-1.3.2[RFC].
+
 === Resource owner password credentials
 
-The resource owner password credentials (i.e. username and password) can be used directly as an authorization grant to obtain an access token (in REST manner)
+The resource owner password credentials (i.e. username and password) can be used directly as an authorization grant to obtain an access token (in REST manner).
 
-NOTE: Should only be used when there is a high degree of trust between the resource owner and the client (e.g., the client is part of the device operating system or a highly privileged application), and when other authorization grant types are not available (such as an authorization code)
+The biggest difference with the others flows is that the authentication process is triggered by the application and not the AM Authorization Server.
+
+NOTE: Should only be used when there is a high degree of trust between the resource owner and the client (e.g., the client is part of the device operating system or a highly privileged application), and when other authorization grant types are not available (such as the authorization code).
+
+1. The End-User clicks *Sign in* and enters its credentials (username/password) in the application form.
+2. The application forward the credentials to the AM Authorization Server */oauth/token*.
+3. AM check the credentials.
+4. AM responds with an access token (and optionally, a refresh Token).
+5. The application can use this access token to make secured API calls about the End-User.
 
 NOTE: Resource Owner Password Credentials grant URL : POST https://am-gateway/{domain}/oauth/token?grant_type=password&username=john&password=doe (with Basic client credentials)
 
+NOTE: For more information about this flow, please read the link:https://tools.ietf.org/html/rfc6749#section-1.3.3[RFC].
+
 === Client credentials
 
-The Client Credentials grant type is used by clients to obtain an access token outside of the context of a user. This is typically used by clients to access resources about themselves rather than to access a user's resources.
+The Client Credentials grant type is used by clients to obtain an access token outside of the context of a user.
+This is typically used by clients to access resources about themselves rather than to access a user's resources.
 
 NOTE: Flow used typically when the client is acting on its own behalf (the client is also the resource owner). Machine to machine communication
 
 NOTE: Client Credentials grant URL : POST https://am-gateway/{domain}/oauth/token?grant_type=client_credentials (with Basic client credentials)
 
+NOTE: For more information about this flow, please read the link:https://tools.ietf.org/html/rfc6749#section-1.3.4[RFC].
+
 === Refresh token
 
 A refresh token is used to get a new access token letting client application to renew access to protected resources without prompting login page to the resource owner.
 
-NOTE: For security reason (a user can remain authenticated forever), a refresh token must be stored in secure place (i.e server side) and the client MUST discard the old refresh token and replace it with the new refresh token.
+NOTE: The refresh token is one use only.
+
+NOTE: For security reason (a user can remain authenticated forever), a refresh token must be stored in secure place (i.e server side).
 
 NOTE: Refresh token grant URL : POST https://am-gateway/{domain}/oauth/token?grant_type=refresh_token&refresh_token={refreshToken} (with Basic client credentials)
 
 == Endpoints
+
+As per of the specification, AM provides the following endpoints :
 
 === Authorization endpoint
 
@@ -181,7 +199,7 @@ Location: https://web-app/callback?code=js89p2x1&state=6789DSKL
 Come back to the web application
 ----
 +
-. The resource owner is authenticated and the approved web application acting on the resource owner's behalf. The web application can ask for an access token.
+. The resource owner is authenticated and approved web application acting on the resource owner's behalf. The web application can ask for an access token.
 +
 [source]
 ----
